@@ -9,6 +9,13 @@ import logging
 #LOGGING_LEVEL = logging.DEBUG
 LOGGING_LEVEL = logging.INFO
 
+
+# host status
+MONITORED       = 0
+NOT_MONITORED   = 1
+NOT_FOUND       = 2
+
+
 def help():
     print "need help"
 
@@ -71,6 +78,17 @@ def host_info_get(zapi):
     
     return host
 
+def host_info_get_by_hostname(zapi, hostname):
+    host = zapi.host.get(
+        filter={'host':hostname},
+        output='extend',
+        selectInventory='extend',
+        selectInterfaces='extend',
+        selectTags='extend'
+    )
+    
+    return host
+
 
 def logging_load():
     stream = logging.StreamHandler(sys.stdout)
@@ -83,7 +101,7 @@ def logging_load():
 def test_host(zapi):
     hosts = host_info_get(zapi)
     for host in hosts:
-        #print(host)
+        print(host)
         print("name={:15}\t\thostid={:15}\tstatus={:15}\terror={:15}".format(host['name'],host['hostid'],host['status'],host['error']))
     
 
@@ -91,6 +109,23 @@ def test_group(zapi):
     groups = group_info_get(zapi)
     for group in groups:
         print("group={0}\tgroupid={1}".format(group['name'],group['groupid']))
+
+def test_inventory(zapi):
+    groups = group_info_get(zapi)
+
+    inventory = []
+    num = 0
+    for group in groups:
+        
+        for host in group['hosts']:
+            hostStatus = host_status_get(zapi, host['host'])
+            print id(hostStatus),id(MONITORED)
+            if hostStatus is MONITORED:
+                hostInfo = host_info_get_by_hostname(zapi, host['host'])
+                inventory = {}
+                print hostInfo + "#"
+            else:
+                print "no output"
 
 def main():
     logging_load()
@@ -119,6 +154,8 @@ def main():
             test_host(demo)
         elif option == 'test_group':
             test_group(demo)
+        elif option == 'test_inventory':
+            test_inventory(demo)
     else:
         help()
 
