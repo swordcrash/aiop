@@ -4,6 +4,7 @@
 from pyzabbix import ZabbixAPI,ZabbixAPIException
 import sys
 import logging
+import json
 
 # logging.INFO, logging.WARNING, logging.DEBUG
 #LOGGING_LEVEL = logging.DEBUG
@@ -16,8 +17,24 @@ NOT_MONITORED   = 1
 NOT_FOUND       = 2
 
 
+#stream = logging.StreamHandler(sys.stdout)
+file_handler = logging.FileHandler('zbxtool.log')
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+#stream.setLevel(LOGGING_LEVEL)
+logger = logging.getLogger('pyzabbix')
+
+#logger.addHandler(stream)
+logger.addHandler(file_handler)
+
+logger.setLevel(LOGGING_LEVEL)
+
+
 def help():
     print "need help"
+
 
 def group_info_get(zapi):
     group = zapi.hostgroup.get(
@@ -26,7 +43,7 @@ def group_info_get(zapi):
         real_host=True,
         monitored_hosts=True
     )
-
+    #logger.debug('hostgroup name: \033[96m {0}\033[00m'.format(group['name']))
     return group
 
 
@@ -65,7 +82,8 @@ def host_status_get(zapi, host):
     if not host:
         return NOT_FOUND
     else:
-        return host[0]['status']
+        #return int(host[0]['status'])
+        return int(host[0]['status'])
 
 
 def host_info_get(zapi):
@@ -84,24 +102,42 @@ def host_info_get_by_hostname(zapi, hostname):
         output='extend',
         selectInventory='extend',
         selectInterfaces='extend',
-        selectTags='extend'
+        selectTags='extend',
+        selectParentTemplates='extend'
     )
     
     return host
 
 
+def template_get(zapi):
+    template = zapi.template.get(
+        output='extend'
+    )
+        
+    return template
+
+
 def logging_load():
-    stream = logging.StreamHandler(sys.stdout)
-    stream.setLevel(LOGGING_LEVEL)
-    log = logging.getLogger('pyzabbix')
-    log.addHandler(stream)
-    log.setLevel(LOGGING_LEVEL)
+    #stream = logging.StreamHandler(sys.stdout)
+    file_handler = logging.FileHandler('zbxtool.log')
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+
+    #stream.setLevel(LOGGING_LEVEL)
+    logger = logging.getLogger('pyzabbix')
+
+    #logger.addHandler(stream)
+    logger.addHandler(file_handler)
+
+    logger.setLevel(LOGGING_LEVEL)
+    return logger
 
 
 def test_host(zapi):
     hosts = host_info_get(zapi)
     for host in hosts:
-        print(host)
+        #print(host)
         print("name={:15}\t\thostid={:15}\tstatus={:15}\terror={:15}".format(host['name'],host['hostid'],host['status'],host['error']))
     
 
@@ -109,6 +145,8 @@ def test_group(zapi):
     groups = group_info_get(zapi)
     for group in groups:
         print("group={0}\tgroupid={1}".format(group['name'],group['groupid']))
+        logger.info('hostgroup name: \033[96m {0}\033[00m'.format(group['name']))
+
 
 def test_inventory(zapi):
     groups = group_info_get(zapi)
@@ -119,22 +157,42 @@ def test_inventory(zapi):
         
         for host in group['hosts']:
             hostStatus = host_status_get(zapi, host['host'])
-            print id(hostStatus),id(MONITORED)
             if hostStatus is MONITORED:
                 hostInfo = host_info_get_by_hostname(zapi, host['host'])
+                
                 inventory = {}
-                print hostInfo + "#"
+                inventory['groupID'] = group['groupid']
+                inventory['groupName'] = group['name']
+                inventory['hostID'] =  hostInfo[0]['hostid']
+                inventory['host'] =  hostInfo[0]['host']
+                inventory['visiableName'] =  hostInfo[0]['name']
+
+                # Tag
+                tagList = []
+                for tag in hostInfo[0]['tags']:
+                    tagList.append(tag)
+                inventory['tags'] = tagList 
+
+                # Template
+                templateList = []
+                for template in hostInfo[0]['parentTemplates']:
+                    templateList.append(template['host'])
+                inventory['templates'] = templateList
+
+                logger.info('inventory:{0}'.format(inventory))
             else:
-                print "no output"
+                logger.info('{} is null'.format(group))
+           
+        return json.dumps(inventory, sort_keys=True, indent=4, separators=(',',':'))
+
+
+def test_template(zapi):
+    templates = template_get(zapi)
+    for template in templates:
+        print template['host']
+    
 
 def main():
-    logging_load()
-    #stream = logging.StreamHandler(sys.stdout)
-    #stream.setLevel(LOGGING_LEVEL)
-    #log = logging.getLogger('pyzabbix')
-    #log.addHandler(stream)
-    #log.setLevel(LOGGING_LEVEL)
-
     demo = ZabbixAPI("http://10.112.20.51/demo")
     demo.session.verify = False
     demo.login("zapi", "zapi")
@@ -155,7 +213,9 @@ def main():
         elif option == 'test_group':
             test_group(demo)
         elif option == 'test_inventory':
-            test_inventory(demo)
+           res = test_inventory(demo)
+        elif option == 'test_template':
+            test_template(demo)
     else:
         help()
 
