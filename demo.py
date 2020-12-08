@@ -5,6 +5,7 @@ from pyzabbix import ZabbixAPI,ZabbixAPIException
 import sys
 import logging
 import json
+import csv
 
 # logging.INFO, logging.WARNING, logging.DEBUG
 #LOGGING_LEVEL = logging.DEBUG
@@ -151,7 +152,7 @@ def test_group(zapi):
 def test_inventory(zapi):
     groups = group_info_get(zapi)
 
-    inventory = []
+    inventorys = []
     num = 0
     for group in groups:
         
@@ -180,17 +181,22 @@ def test_inventory(zapi):
                 inventory['templates'] = templateList
 
                 logger.info('inventory:{0}'.format(inventory))
+                inventorys.append(inventory)
             else:
                 logger.info('{} is null'.format(group))
            
-        return json.dumps(inventory, sort_keys=True, indent=4, separators=(',',':'))
+        INVENTORY = 'inventory.json'
+        with open(INVENTORY, 'w+') as f:
+            f.write(json.dumps(inventorys, sort_keys=True, indent=4, separators=(',',':')))
+
+        return json.dumps(inventorys, sort_keys=True, indent=4, separators=(',',':'))
 
 
 def test_template(zapi):
     templates = template_get(zapi)
     for template in templates:
         print template['host']
-    
+
 
 def main():
     demo = ZabbixAPI("http://10.112.20.51/demo")
@@ -213,22 +219,12 @@ def main():
         elif option == 'test_group':
             test_group(demo)
         elif option == 'test_inventory':
-           res = test_inventory(demo)
+            res = test_inventory(demo)
         elif option == 'test_template':
             test_template(demo)
     else:
         help()
 
-    #get group
-    #groups = group_info_get(demo)
-
-    #filter by group name
-    #group = group_status_get(demo, 'demo-network/上海-交换机')
-
-    #get group id by group name
-    #group = group_id_get(demo, groupName)
-    #for group in groups:
-    #   print group
 """
     hosts = host_info_get(demo)
     for host in hosts:
