@@ -118,6 +118,26 @@ def template_get(zapi):
     return template
 
 
+def trigger_get(zapi):
+    trigger = zapi.trigger.get(
+        output='extend',
+        expandDescription=1,
+        only_true=1,
+        skipDependent=1,
+        active=1,
+        withLastEventUnacknowledge=1,
+        monitored=1,
+        selectGroups=['groupid','name'],
+        selectHosts=['host','name'],
+        min_severity=3,
+        selectItems=['key_','prevvalue','units','value_type'],
+        sortorder='DESC',
+        filter={'value':1}
+    )
+    
+    return trigger
+
+
 def logging_load():
     #stream = logging.StreamHandler(sys.stdout)
     file_handler = logging.FileHandler('zbxtool.log')
@@ -198,6 +218,12 @@ def test_template(zapi):
         print template['host']
 
 
+def test_trigger(zapi):
+    triggers = trigger_get(zapi)
+    for trigger in triggers:
+        print trigger
+
+
 def main():
     demo = ZabbixAPI("http://10.112.20.51/demo")
     demo.session.verify = False
@@ -222,6 +248,8 @@ def main():
             res = test_inventory(demo)
         elif option == 'test_template':
             test_template(demo)
+        elif option == 'test_trigger':
+            test_trigger(demo)
     else:
         help()
 
