@@ -129,7 +129,7 @@ def trigger_get(zapi):
         monitored=1,
         selectGroups=['groupid','name'],
         selectHosts=['host','name'],
-        min_severity=3,
+        min_severity=4,
         selectItems=['key_','prevvalue','units','value_type'],
         sortorder='DESC',
         filter={'value':1}
@@ -221,11 +221,12 @@ def test_template(zapi):
 def test_trigger(zapi):
     triggers = trigger_get(zapi)
     for trigger in triggers:
-        print trigger
+        print trigger['description']
 
 
 def main():
-    demo = ZabbixAPI("http://10.112.20.51/demo")
+    #demo = ZabbixAPI("http://10.112.20.51/demo")
+    demo = ZabbixAPI("http://10.112.20.209/zabbix")
     demo.session.verify = False
     demo.login("zapi", "zapi")
     
