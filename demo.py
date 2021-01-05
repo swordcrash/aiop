@@ -1,15 +1,16 @@
 #!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 from pyzabbix import ZabbixAPI,ZabbixAPIException
 import sys
 import logging
 import json
 import csv
+import time
 
 # logging.INFO, logging.WARNING, logging.DEBUG
-#LOGGING_LEVEL = logging.DEBUG
-LOGGING_LEVEL = logging.INFO
+LOGGING_LEVEL = logging.DEBUG
+#LOGGING_LEVEL = logging.INFO
 
 
 # host status
@@ -34,7 +35,7 @@ logger.setLevel(LOGGING_LEVEL)
 
 
 def help():
-    print "need help"
+    print("need help")
 
 
 def group_info_get(zapi):
@@ -74,6 +75,15 @@ def group_create(zapi, groupName):
     return group
 
 
+def group_check(zapi, groupName):
+    group = zapi.hostgroup.get(
+        output=['groupid'],
+        filter={'name': groupName}
+    )
+
+    return group
+
+
 def host_status_get(zapi, host):
     host = zapi.host.get(
         filter={'host': host},
@@ -85,6 +95,71 @@ def host_status_get(zapi, host):
     else:
         #return int(host[0]['status'])
         return int(host[0]['status'])
+
+
+def host_id_get(zapi, host):
+    host = zapi.host.get(
+        filter={'host': host},
+        output=['hostid'],
+    )
+    
+    if not host:
+        return NOT_FOUND
+    else:
+        #return int(host[0]['status'])
+        return int(host[0]['hostid'])
+
+
+def host_create_for_sender(zapi, host, groupid):
+    host = zapi.host.create(
+        host=host,
+        interfaces=[{
+            "type":1,
+            "ip":"127.0.0.1",
+            "useip": 1,
+            "port": "10050",
+            "main": 1,
+            "dns": ""
+        }],
+        groups=groupid
+    )
+
+    return host
+
+def item_create_for_sender(zapi, hostid, key, value_type):
+    item = zapi.item.create(
+        name=key,
+        key_=key,
+        hostid=hostid,
+        type=2,  # type of item
+        value_type=value_type # 0-float 1-char 3-unsigned
+    )
+
+    return item
+
+
+def item_search_for_sender(zapi, hostid, key):
+    item = zapi.item.get(
+        output="extend",
+        hostids=hostid,
+        search={"key_": key}
+    )
+
+    return item
+
+#def history_get(zapi, itemid, value_type, time_from='1451606400', time_to='2398377600', limit=8760):
+def history_get(zapi, itemid, value_type, limit=10):
+    history = zapi.history.get(
+        output='extend',
+        history=value_type,
+        itemids=itemid,
+        sortorder='DESC',
+        time_from=(int(time.time())-24*60*60*3), #1451606400,
+        time_till=(int(time.time())), #2398377600,
+        limit=limit
+    )
+    
+    return history
 
 
 def host_info_get(zapi):
@@ -215,18 +290,27 @@ def test_inventory(zapi):
 def test_template(zapi):
     templates = template_get(zapi)
     for template in templates:
-        print template['host']
+        print(template['host'])
 
 
 def test_trigger(zapi):
     triggers = trigger_get(zapi)
     for trigger in triggers:
-        print trigger['description']
+        print(trigger['description'])
 
+
+#def test_history(zapi, host, item, value_type, time_from, time_to, limit=8760):
+def test_history(zapi, item, value_type=3):
+    results = history_get(zapi, item, value_type)
+    for result in results:
+        print(result)
+
+    return results
+    
 
 def main():
-    #demo = ZabbixAPI("http://10.112.20.51/demo")
-    demo = ZabbixAPI("http://10.112.20.209/zabbix")
+    demo = ZabbixAPI("http://10.112.20.51/demo")
+    #demo = ZabbixAPI("http://10.112.20.209/zabbix")
     demo.session.verify = False
     demo.login("zapi", "zapi")
     
@@ -238,9 +322,9 @@ def main():
     elif sys.argv[1].startswith('--'):
         option = sys.argv[1][2:]
         if option == 'all':
-            print "all"
+            print("all")
         elif option == 'version':
-            print "version"
+            print("version")
         elif option == 'test_host':
             test_host(demo)
         elif option == 'test_group':
@@ -251,6 +335,14 @@ def main():
             test_template(demo)
         elif option == 'test_trigger':
             test_trigger(demo)
+        elif option == 'test_history':
+            key = 'test'
+            host_id = host_id_get(demo, 'test01')
+            print(host_id)
+            item = item_search_for_sender(demo, host_id, key)
+            item_id = item[0]['itemid']
+            print(item_id)
+            test_history(demo, item_id, 3)
     else:
         help()
 
