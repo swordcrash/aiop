@@ -296,7 +296,7 @@ def test_template(zapi):
 def test_trigger(zapi):
     triggers = trigger_get(zapi)
     for trigger in triggers:
-        print(trigger['description'])
+        print("{}#{}".format(trigger['description'],trigger['hosts'][0]['host']))
 
 
 #def test_history(zapi, host, item, value_type, time_from, time_to, limit=8760):
