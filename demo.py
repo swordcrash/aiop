@@ -239,9 +239,13 @@ def test_host(zapi):
 
 def test_group(zapi):
     groups = group_info_get(zapi)
+    res = []
     for group in groups:
         print("group={0}\tgroupid={1}".format(group['name'],group['groupid']))
+        res.append(group['name'])
         logger.info('hostgroup name: \033[96m {0}\033[00m'.format(group['name']))
+    
+    return res
 
 
 def test_inventory(zapi):
