@@ -313,8 +313,7 @@ def test_history(zapi, item, value_type=3):
     
 
 def main():
-    demo = ZabbixAPI("http://10.112.20.51/demo")
-    #demo = ZabbixAPI("http://10.112.20.209/zabbix")
+    demo = ZabbixAPI("")
     demo.session.verify = False
     demo.login("zapi", "zapi")
     
